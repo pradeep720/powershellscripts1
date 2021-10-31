@@ -1,0 +1,70 @@
+Param(
+    [String]$msapiEnvironmentName,
+    [string]$umbEnvironmentName,
+    [String]$userName
+	)
+
+$connection = Get-AutomationConnection -Name AzureRunAsConnection
+
+Connect-AzAccount -ServicePrincipal `
+    -Tenant $connection.TenantID `
+    -ApplicationId $connection.ApplicationID `
+    -CertificateThumbprint $connection.CertificateThumbprint 
+
+ $ErrorActionPreference = 'Stop'    
+
+try{
+$umbLAWs = Get-AzResource -ResourceGroupName UMB-$umbEnvironmentName-Shared-RG -ResourceType "Microsoft.OperationalInsights/workspaces" | Get-AzOperationalInsightsWorkspace
+} catch {
+    Write-Error 'Caught an Exception' -ErrorAction 'Continue'
+}
+
+try{
+$msapiLAWs = Get-AzResource -ResourceGroupName MSAPI-DB-$msapiEnvironmentName-RG -ResourceType "Microsoft.OperationalInsights/workspaces" | Get-AzOperationalInsightsWorkspace
+} catch {
+    Write-Error 'Caught an Exception' -ErrorAction 'Continue'
+}  
+
+ $userNamedet = Get-AzADUser -StartsWith $userName
+
+$ObjectId=(Get-AzADUser -DisplayName $userNamedet.DisplayName).id
+
+$alreadyExits1 = Get-AzRoleAssignment -SignInName $userNamedet.UserPrincipalName `
+               -ResourceGroupName $msapiLAWs.ResourceGroupName `
+               -ResourceName $msapiLAWs.Name `
+               -ResourceType Microsoft.OperationalInsights/workspaces
+
+$alreadyExits2 = Get-AzRoleAssignment -SignInName $userNamedet.UserPrincipalName `
+               -ResourceGroupName $umbLAWs.ResourceGroupName `
+               -ResourceName $umbLAWs.Name `
+               -ResourceType Microsoft.OperationalInsights/workspaces
+
+if($alreadyExits1){
+   Write-Output "already exists $userName"
+} else{
+New-AzRoleAssignment -ObjectId $ObjectId `
+ -RoleDefinitionName "Log Analytics Reader" `
+ -ResourceName $msapiLAWs.Name `
+ -ResourceType Microsoft.OperationalInsights/workspaces `
+ -ResourceGroupName $msapiLAWs.ResourceGroupName
+}
+
+
+if($alreadyExits2){
+     Write-Output "already exists $userName"
+      }else{
+New-AzRoleAssignment -ObjectId $ObjectId `
+ -RoleDefinitionName "Log Analytics Reader" `
+ -ResourceName $umbLAWs.Name `
+ -ResourceType Microsoft.OperationalInsights/workspaces `
+ -ResourceGroupName $umbLAWs.ResourceGroupName
+
+}
+
+<#
+ 
+New-AzRoleAssignment -ObjectId "c070144d-4f33-487d-a3db-e7ccd6f5f491" `
+-RoleDefinitionName "Log Analytics Reader" `
+-Scope /subscriptions/"ce25e5cb-eabe-4c5e-8738-1099015db1a2"/resourcegroups/$msapiLAWs.ResourceGroupName/providers/"Microsoft.OperationalInsights/workspaces"/$msapiLAWs.Name
+
+#>

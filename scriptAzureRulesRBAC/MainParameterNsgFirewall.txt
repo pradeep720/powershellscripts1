@@ -1,0 +1,38 @@
+param(
+ [string]$MSAPIEnvironmentName,
+ [string]$UMBEnvironmentName,
+ [string]$NSGMSAPIEnvironmentName,
+ [string]$ruleName,
+ [string]$myIP)
+
+$connection = Get-AutomationConnection -Name AzureRunAsConnection
+
+Connect-AzAccount -ServicePrincipal `
+    -Tenant $connection.TenantID `
+    -ApplicationId $connection.ApplicationID `
+    -CertificateThumbprint $connection.CertificateThumbprint 
+
+$params = @{
+          "umbEnvironmentName" = "$UMBEnvironmentName";
+          "msapiEnvironmentName" = "$MSAPIEnvironmentName";
+           "ruleName" = "$ruleName";
+          "myIp" ="$myIP";
+           }
+
+$params1 = @{
+          "EnvironmentName" = "$NSGMSAPIEnvironmentName";
+           "ruleName" = "$ruleName";
+          "myIp" = "$myIP";
+           }           
+
+Start-AzAutomationRunbook `
+    -AutomationAccountName 'Automation-01' `
+    -Name 'FirewallRule' `
+    -ResourceGroupName 'Automation-RG' `
+    -Parameters $params -Wait    
+
+Start-AzAutomationRunbook `
+    -AutomationAccountName 'Automation-01' `
+    -Name 'NsgRule' `
+    -ResourceGroupName 'Automation-RG' `
+    -Parameters $params1 -Wait            

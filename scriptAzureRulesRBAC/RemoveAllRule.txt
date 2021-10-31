@@ -1,0 +1,44 @@
+Param(
+    [String]$EnvironmentName,
+    [String]$RuleName
+)
+
+
+$connection = Get-AutomationConnection -Name AzureRunAsConnection
+
+Connect-AzAccount -ServicePrincipal `
+    -Tenant $connection.TenantID `
+    -ApplicationId $connection.ApplicationID `
+    -CertificateThumbprint $connection.CertificateThumbprint 
+ 
+ $ErrorActionPreference = 'Stop'
+
+
+
+ # $servers = Get-AzResource -ResourceGroupName $EnvironmentName* -ResourceType "Microsoft.Sql servers/firewallRules" 
+try{
+
+  Get-AzResource -ResourceGroupName MSAPI-DB-$EnvironmentName-RG -ResourceType "Microsoft.Sql/servers" `
+                   | Get-AzSqlServer | Remove-AzSqlServerFirewallRule `
+                   -FirewallRuleName $ruleName
+}catch{
+    Write-Output "rule name not found MSAPI" 
+}
+
+try{
+ Get-AzResource -ResourceGroupName UMB-$EnvironmentName-Shared-RG -ResourceType "Microsoft.Sql/servers" `
+                   | Get-AzSqlServer | Remove-AzSqlServerFirewallRule `
+                   -FirewallRuleName $ruleName                  
+}catch{
+
+  Write-Output "rule name not found UMB" 
+}
+
+try{
+  Get-AzResource -ResourceGroupName msapi-$EnvironmentName-RG -ResourceType "Microsoft.Network/networkSecurityGroups" `
+                | Get-AzNetworkSecurityGroup `
+               | Remove-AzNetworkSecurityRuleConfig -Name $ruleName | Set-AzNetworkSecurityGroup
+
+}catch{
+ Write-Output "rule name not found msapi"
+}

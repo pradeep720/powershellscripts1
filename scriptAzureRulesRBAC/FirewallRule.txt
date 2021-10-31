@@ -1,0 +1,99 @@
+Param(
+    [String]$umbEnvironmentName,
+    [String]$msapiEnvironmentName,
+    [String]$ruleName,
+    [String]$myIp
+)
+
+$connection = Get-AutomationConnection -Name AzureRunAsConnection
+
+Connect-AzAccount -ServicePrincipal `
+    -Tenant $connection.TenantID `
+    -ApplicationId $connection.ApplicationID `
+    -CertificateThumbprint $connection.CertificateThumbprint 
+ 
+ $ErrorActionPreference = 'Stop'
+
+
+try {
+  $msapiservers = Get-AzResource -ResourceGroupName MSAPI-DB-$msapiEnvironmentName-RG -ResourceType "Microsoft.Sql/servers" | Get-AzSqlServer
+} catch {
+    Write-Error 'Caught an Exception' -ErrorAction 'Continue'
+}
+
+
+try {
+   $umbservers = Get-AzResource -ResourceGroupName UMB-$umbEnvironmentName-Shared-RG -ResourceType "Microsoft.Sql/servers" | Get-AzSqlServer
+} catch {
+    Write-Error 'Caught an Exception' -ErrorAction 'Continue'
+}
+
+
+
+ $allFirewallRules = @()
+
+ if($msapiservers){
+
+
+
+  foreach($msapiserver in $msapiservers) {
+
+   # $ruleExists =(Get-AzSqlServerFirewallRule -ResourceGroupName $server.ResourceGroupName -ServerName $server.ServerName).FirewallRuleName.Contains($ruleName);
+     
+     try
+        {
+            $msapiRuleExists =(Get-AzSqlServerFirewallRule -ResourceGroupName $msapiserver.ResourceGroupName -ServerName $msapiserver.ServerName).FirewallRuleName.Contains($ruleName);
+     
+        }
+        catch
+        {
+            Write-Verbose "[ $msapiRuleExists ] not valid"
+        }
+
+       
+      if($msapiRuleExists){
+
+            Write-Output("$ruleName already exists in $RG");
+      
+       }else{
+    
+              $msapifireWallRules = New-AzSqlServerFirewallRule -ResourceGroupName $msapiserver.ResourceGroupName -ServerName $msapiserver.ServerName -FirewallRuleName $ruleName -StartIpAddress $myIp -EndIpAddress $myIp
+
+        $allFirewallRules += $msapifireWallRules
+    }}
+
+ }
+ 
+ if($umbservers){
+
+
+  foreach($umbserver in  $umbservers) {
+
+   # $ruleExists =(Get-AzSqlServerFirewallRule -ResourceGroupName $server.ResourceGroupName -ServerName $server.ServerName).FirewallRuleName.Contains($ruleName);
+     
+     try
+        {
+            $umbRuleExists =(Get-AzSqlServerFirewallRule -ResourceGroupName $umbserver.ResourceGroupName -ServerName $umbserver.ServerName).FirewallRuleName.Contains($ruleName);
+     
+        }
+        catch
+        {
+            Write-Verbose "[ $umbRuleExists ] not valid"
+        }
+
+       
+      if($umbRuleExists){
+
+            Write-Output("$ruleName already exists in $RG");
+      
+       }else{
+    
+              $umbfireWallRules = New-AzSqlServerFirewallRule -ResourceGroupName $umbserver.ResourceGroupName -ServerName $umbserver.ServerName -FirewallRuleName $ruleName -StartIpAddress $myIp -EndIpAddress $myIp
+
+       $allFirewallRules+= $umbfireWallRules
+    }}
+
+ }
+
+
+     return $allFirewallRules
