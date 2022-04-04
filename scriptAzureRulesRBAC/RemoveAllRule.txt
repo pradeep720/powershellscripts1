@@ -3,6 +3,7 @@ Param(
     [String]$RuleName
 )
 
+#cool1
 
 $connection = Get-AutomationConnection -Name AzureRunAsConnection
 
