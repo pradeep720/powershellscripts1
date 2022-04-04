@@ -3,6 +3,9 @@ Param(
     [String]$ruleName,
     [String]$myIp
 )
+
+#cool 
+
 $connection = Get-AutomationConnection -Name AzureRunAsConnection
 
 Connect-AzAccount -ServicePrincipal `
