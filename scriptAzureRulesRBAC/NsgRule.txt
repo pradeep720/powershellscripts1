@@ -4,7 +4,7 @@ Param(
     [String]$myIp
 )
 
-#cool 
+
 
 $connection = Get-AutomationConnection -Name AzureRunAsConnection
 
